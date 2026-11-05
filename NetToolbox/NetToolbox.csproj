@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>NetToolbox</AssemblyName>
+    <RootNamespace>NetToolbox</RootNamespace>
+    <Version>1.0.0</Version>
+    <Description>Windows 网络稳定性测试工具箱：DNS / TCP / UDP / NAT 评估与 HTML 报告</Description>
+  </PropertyGroup>
+
+</Project>

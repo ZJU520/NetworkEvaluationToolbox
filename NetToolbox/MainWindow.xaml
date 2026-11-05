@@ -1,0 +1,171 @@
+<Window x:Class="NetToolbox.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:NetToolbox.ViewModels"
+        Title="网络测试工具箱 NetToolbox"
+        Width="1020" Height="720" MinWidth="900" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F7FA">
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+    <Window.Resources>
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="#4B5563"/>
+            <Setter Property="Margin" Value="0,10,0,4"/>
+        </Style>
+        <Style x:Key="Input" TargetType="TextBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="BorderBrush" Value="#D1D5DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="Panel" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#1F2933" Opacity="0.08" BlurRadius="8" ShadowDepth="1"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="330"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== 左侧：配置面板 ===== -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,14,0">
+            <StackPanel>
+                <Border Style="{StaticResource Panel}">
+                    <StackPanel>
+                        <TextBlock Text="测试目标" FontSize="15" FontWeight="SemiBold"/>
+
+                        <TextBlock Text="DNS 服务器（逗号分隔）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding DnsServers, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="测试域名" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding TestDomains, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="TCP 目标（host:port）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding TcpTargets, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="STUN 服务器（UDP/NAT 探测）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding StunServers, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="MQTT Broker（host:port，改成你的平台接入地址）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding MqttBroker, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="MQTT KeepAlive（秒，模拟网关心跳周期）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding MqttKeepAliveText, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Panel}">
+                    <StackPanel>
+                        <TextBlock Text="压测参数" FontSize="15" FontWeight="SemiBold"/>
+
+                        <TextBlock Text="压测时长（秒，5 - 3600）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding DurationText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="并发数（1 - 32）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding ConcurrencyText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="NAT 容量探测上限（100 - 2000 会话）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding NatMaxText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="启用维度" Style="{StaticResource Label}"/>
+                        <StackPanel>
+                            <CheckBox Content="DNS 解析稳定性" IsChecked="{Binding EnableDns}" Margin="0,2"/>
+                            <CheckBox Content="TCP 连接稳定性" IsChecked="{Binding EnableTcp}" Margin="0,2"/>
+                            <CheckBox Content="UDP 连通性稳定性" IsChecked="{Binding EnableUdp}" Margin="0,2"/>
+                            <CheckBox Content="NAT 类型探测" IsChecked="{Binding EnableNatType}" Margin="0,2"/>
+                            <CheckBox Content="NAT 会话容量测试" IsChecked="{Binding EnableNatCapacity}" Margin="0,2"/>
+                            <CheckBox Content="MQTT 长连接稳定性（MQ/网关场景）" IsChecked="{Binding EnableMqtt}" Margin="0,2"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Panel}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="开始测试" Command="{Binding StartCmd}"
+                                    Width="120" Height="34" Margin="0,0,10,0"
+                                    Background="#3B82F6" Foreground="White" BorderThickness="0"
+                                    FontWeight="SemiBold" Cursor="Hand"/>
+                            <Button Content="停止" Command="{Binding StopCmd}"
+                                    Width="80" Height="34"
+                                    Background="#EF4444" Foreground="White" BorderThickness="0"
+                                    Cursor="Hand"/>
+                        </StackPanel>
+                        <ProgressBar Value="{Binding Progress}" Maximum="100" Height="8" Margin="0,12,0,6"
+                                     Foreground="#3B82F6" Background="#EEF0F3"/>
+                        <TextBlock Text="{Binding ProgressText}" FontSize="12" Foreground="#6B7280"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ===== 右侧：实时状态 ===== -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Style="{StaticResource Panel}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="实时状态" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <ItemsControl ItemsSource="{Binding Dimensions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="8"
+                                        Padding="10,8" Margin="0,0,0,8">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5"/>
+                                            <TextBlock Text="{Binding Status}" FontSize="12" Foreground="#3B82F6"
+                                                       Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Metrics}" FontSize="12" Foreground="#6B7280"
+                                                   Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Panel}" Grid.Row="1" Margin="0,0,0,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="运行日志" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <TextBox Grid.Row="1" Text="{Binding LogText, Mode=OneWay}"
+                             IsReadOnly="True" AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                             FontFamily="Consolas" FontSize="11.5" TextWrapping="Wrap"
+                             BorderThickness="0" Background="#FAFBFC"
+                             x:Name="LogBox"/>
+                </Grid>
+            </Border>
+
+            <Button Grid.Row="2" Content="📄 打开评估报告" Command="{Binding OpenReportCmd}"
+                    IsEnabled="{Binding HasReport}"
+                    Height="38" FontWeight="SemiBold" FontSize="14"
+                    Background="#0E9F6E" Foreground="White" BorderThickness="0" Cursor="Hand"/>
+        </Grid>
+    </Grid>
+</Window>
