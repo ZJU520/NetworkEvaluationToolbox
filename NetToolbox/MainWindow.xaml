@@ -58,7 +58,7 @@
                         <TextBlock Text="TCP 目标（host:port）" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Input}" Text="{Binding TcpTargets, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Text="STUN 服务器（UDP/NAT 探测）" Style="{StaticResource Label}"/>
+                        <TextBlock Text="STUN 服务器（逗号分隔，国内优先；同域名多 IP 也会自动利用）" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Input}" Text="{Binding StunServers, UpdateSourceTrigger=PropertyChanged}"/>
 
                         <TextBlock Text="MQTT Broker（host:port，改成你的平台接入地址）" Style="{StaticResource Label}"/>
@@ -67,10 +67,10 @@
                         <TextBlock Text="MQTT KeepAlive（秒，模拟网关心跳周期）" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Input}" Text="{Binding MqttKeepAliveText, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Text="测速下载地址" Style="{StaticResource Label}"/>
+                        <TextBlock Text="测速下载地址（可填多个，逗号分隔，自动选最快的）" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Input}" Text="{Binding SpeedDownloadUrl, UpdateSourceTrigger=PropertyChanged}"/>
 
-                        <TextBlock Text="测速上传地址" Style="{StaticResource Label}"/>
+                        <TextBlock Text="测速上传地址（可填多个，逗号分隔）" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Input}" Text="{Binding SpeedUploadUrl, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                 </Border>

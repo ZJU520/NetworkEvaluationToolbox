@@ -46,4 +46,36 @@ public static class AddrResolver
         var ip = await ResolveIpAsync(host, ct);
         return ip == null ? null : new IPEndPoint(ip, port);
     }
+
+    /// <summary>
+    /// 解析出全部 IPv4 地址。NAT 类型判定需要多个「不同目标 IP」来对比映射行为，
+    /// 同一域名的多个 A 记录（如国内 STUN 服务商的多个节点）即可满足，无需依赖境外服务器。
+    /// </summary>
+    public static async Task<List<IPAddress>> ResolveIpsAsync(string host, CancellationToken ct)
+    {
+        var result = new List<IPAddress>();
+        if (string.IsNullOrWhiteSpace(host)) return result;
+        var h = host.Trim();
+        if (IPAddress.TryParse(h, out var direct)) { result.Add(direct); return result; }
+
+        try
+        {
+            var addrs = await Dns.GetHostAddressesAsync(h, AddressFamily.InterNetwork, ct);
+            result.AddRange(addrs);
+        }
+        catch { /* 走兜底 */ }
+
+        if (result.Count == 0)
+        {
+            foreach (var s in new[] { "223.5.5.5", "119.29.29.29" })
+            {
+                if (IPAddress.TryParse(s, out var dns))
+                {
+                    var ip = await DnsProbe.QueryAAsync(dns, h, 1500, ct);
+                    if (ip != null) { result.Add(ip); break; }
+                }
+            }
+        }
+        return result.Distinct().ToList();
+    }
 }

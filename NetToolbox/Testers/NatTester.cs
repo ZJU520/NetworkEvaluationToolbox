@@ -21,13 +21,14 @@ public class NatTester : ITester
         var r = new DimensionResult { Key = Key, Name = Name };
 
         // ---------- 类型探测 ----------
-        string natType = "";
+        var typeProbe = new NatTypeProbe("", false, false);
         if (cfg.EnableNatType)
         {
             metrics("NAT 类型探测中…");
-            natType = await DetectNatType(cfg, log, ct);
-            r.Findings.Add($"NAT 类型：{natType}");
+            typeProbe = await DetectNatType(cfg, log, ct);
+            r.Findings.Add($"NAT 类型：{typeProbe.Text}");
         }
+        var natType = typeProbe.Text;
 
         // ---------- 会话容量 ----------
         int estimatedCapacity = -1;
@@ -78,14 +79,13 @@ public class NatTester : ITester
             r.Skipped = true;
 
         // ---------- 评分 ----------
+        // 类型分：只有真正判定出行为时才计分；"测不出"不塞惩罚性占位分
         double typeScore = natType switch
         {
             var s when s.Contains("公网") || s.Contains("无 NAT") => 100,
             var s when s.Contains("Full Cone") => 95,
             var s when s.Contains("Restricted") => 75,
             var s when s.Contains("Symmetric") => 55,
-            var s when s.Contains("无法精确判定") => 45,
-            var s when s.Contains("不可用") => 30,
             _ => 0
         };
         double capScore = estimatedCapacity switch
@@ -97,15 +97,34 @@ public class NatTester : ITester
             var v when v > 0 => 30,
             _ => 0
         };
-        if (!cfg.EnableNatType && !cfg.EnableNatCapacity) { r.Score = 0; }
-        else if (cfg.EnableNatType && cfg.EnableNatCapacity && estimatedCapacity >= 0)
-            r.Score = Math.Round(0.6 * typeScore + 0.4 * capScore, 1);
-        else if (cfg.EnableNatType) r.Score = Math.Round(typeScore, 1);
-        else r.Score = Math.Round(capScore, 1);
+        bool capMeasured = estimatedCapacity >= 0;
+
+        if (!cfg.EnableNatType && !cfg.EnableNatCapacity)
+            r.Score = 0;
+        else if (cfg.EnableNatType && cfg.EnableNatCapacity)
+        {
+            if (capMeasured && typeProbe.Determined)
+                r.Score = 0.6 * typeScore + 0.4 * capScore;
+            else if (capMeasured)
+            {
+                // 类型测不出（可用 STUN 不足两台）：不惩罚，改以会话容量为主，扣 5 分不确定性
+                r.Score = Math.Max(0, capScore - 5);
+                r.Findings.Add($"NAT 类型未能分类，本次评分以会话容量为主（容量分 {capScore:F0} 扣 5 分不确定性）：MQTT/网关长连接主要受映射表容量影响，容量充足即不影响长在线能力");
+            }
+            else if (typeProbe.Determined) r.Score = typeScore;
+            else r.Score = typeProbe.AllStunDown ? 30 : 50;
+        }
+        else if (cfg.EnableNatType)
+            r.Score = typeProbe.Determined ? typeScore : (typeProbe.AllStunDown ? 30 : 55);
+        else r.Score = capScore;
+
+        r.Score = Math.Round(r.Score, 1);
         r.Grade = ReportData.GradeOf(r.Score);
 
-        if (natType.Contains("不可用"))
+        if (typeProbe.AllStunDown)
             r.Suggestions.Add("STUN 服务器均无响应：当前网络可能封锁了 UDP 3478 出站流量（企业网/校园网常见）。可换手机热点对比，或在路由器/防火墙上放行 UDP。");
+        else if (!typeProbe.Determined)
+            r.Suggestions.Add("NAT 类型未能分类：可用于对比映射行为的 STUN 服务器只有一台（需两台不同 IP 才能区分锥形/对称型）。如关心 P2P 打洞表现，可在网络设置里补几台 STUN 后重测，或用在线 NAT 检测网站交叉验证；本工具的核心结论（映射表容量）不受影响。");
         if (natType.Contains("Symmetric"))
             r.Suggestions.Add("对称型 NAT：P2P 打洞成功率低，游戏联机 / 点对点传输类应用会明显受限；可通过开启路由器 UPnP、使用中继（TURN）或更换路由器缓解。");
         if (natType.Contains("Restricted"))
@@ -119,61 +138,90 @@ public class NatTester : ITester
         return r;
     }
 
-    private static async Task<string> DetectNatType(TestConfig cfg, Action<string> log, CancellationToken ct)
+    /// <summary>类型探测结果：Determined=已判定出具体 NAT 行为；AllStunDown=所有 STUN 都不可达。</summary>
+    private record NatTypeProbe(string Text, bool Determined, bool AllStunDown);
+
+    private static async Task<NatTypeProbe> DetectNatType(TestConfig cfg, Action<string> log, CancellationToken ct)
     {
-        // 逐个探测候选 STUN 服务器，收集最多 2 个可响应且 IP 不同的服务器
+        // 逐个探测候选 STUN 服务器，收集最多 3 个可响应的目标 IP。
+        // 关键：同一域名解析出的多个 A 记录也算不同目标（NAT 映射按「目标 IP:端口」分配），
+        // 因此国内只有一台可用 STUN 时，靠它的多个节点 IP 也能完成类型判定。
         var stuns = new List<IPEndPoint>();
-        var names = new Dictionary<IPEndPoint, string>();
         foreach (var s in cfg.StunServers)
         {
-            if (stuns.Count >= 2) break;
-            var ep = await StunClient.ResolveAsync(s, ct);
-            if (ep == null) { log($"[NAT] STUN {s}：DNS 解析失败"); continue; }
-            if (stuns.Any(x => x.Address.Equals(ep.Address))) continue; // 需要不同 IP 才能对比映射行为
-            using var probe = new UdpClient(AddressFamily.InterNetwork);
-            var (m, _) = await StunClient.BindingAsync(probe, ep, 1500, ct);
-            if (m != null) { log($"[NAT] STUN {s}（{ep.Address}）可用，公网映射 {m}"); stuns.Add(ep); names[ep] = s; }
-            else log($"[NAT] STUN {s}（{ep.Address}）无响应，尝试下一个");
+            if (stuns.Count >= 3) break;
+            var idx = s.LastIndexOf(':');
+            if (idx <= 0) { log($"[NAT] STUN 格式错误（应为 host:port）：{s}"); continue; }
+            var host = s[..idx];
+            if (!int.TryParse(s[(idx + 1)..], out var port)) { log($"[NAT] STUN 端口无效：{s}"); continue; }
+
+            var ips = await AddrResolver.ResolveIpsAsync(host, ct);
+            if (ips.Count == 0) { log($"[NAT] STUN {s}：DNS 解析失败"); continue; }
+            if (ips.Count > 1) log($"[NAT] {host} 解析出 {ips.Count} 个地址：{string.Join(", ", ips)}");
+
+            foreach (var ip in ips)
+            {
+                if (stuns.Count >= 3) break;
+                if (stuns.Any(x => x.Address.Equals(ip))) continue;
+                var ep = new IPEndPoint(ip, port);
+                using var probe = new UdpClient(AddressFamily.InterNetwork);
+                var (m, _) = await StunClient.BindingAsync(probe, ep, 1500, ct);
+                if (m != null) { log($"[NAT] STUN {host}:{port} → {ip} 可用，公网映射 {m}"); stuns.Add(ep); }
+                else log($"[NAT] STUN {host}:{port} → {ip} 无响应");
+            }
         }
 
         if (stuns.Count == 0)
-            return "STUN 全部不可用（UDP 3478 可能被网络封锁）";
+            return new("STUN 全部不可用（UDP 3478 可能被网络封锁）", false, true);
 
         try
         {
             using var udp = new UdpClient(AddressFamily.InterNetwork);
 
-            var (m1, _) = await StunClient.BindingAsync(udp, stuns[0], 2000, ct);
-            if (m1 == null) return "STUN 不可用（响应不稳定）";
+            // 第一台：带重试，抗瞬时丢包
+            var m1 = await BindingWithRetry(udp, stuns[0], 3, ct);
+            if (m1 == null) return new("STUN 响应不稳定（类型未测出）", false, false);
 
             var localIp = StunClient.GetLocalOutboundIp();
 
-            // 仅一个可用 STUN：无法对比映射行为，只能判断有无 NAT
-            if (stuns.Count == 1)
+            if (!IsPrivateOrCgn(m1.Address) && localIp != null && m1.Address.Equals(localIp))
+                return new("无 NAT（公网直连）", true, false);
+
+            // 同一本地 socket 依次尝试其余服务器（不同目标 = NAT 会分配不同映射），取第一个成功的做比对
+            foreach (var cand in stuns.Skip(1))
             {
-                return localIp != null && m1.Address.Equals(localIp)
-                    ? "无 NAT（公网直连）"
-                    : "无法精确判定类型（仅一个可用 STUN，确认存在 NAT）";
+                var m2 = await BindingWithRetry(udp, cand, 3, ct);
+                if (m2 == null)
+                {
+                    log($"[NAT] 第二服务器 {cand.Address} 三次尝试均无响应，换下一台");
+                    continue;
+                }
+                log($"[NAT] 本地出口 {localIp}｜经 {stuns[0].Address} 映射 {m1}｜经 {cand.Address} 映射 {m2}");
+                return m1.Equals(m2)
+                    ? new("Full Cone / Restricted Cone（端点无关映射）", true, false)
+                    : new("Symmetric（对称型 NAT）", true, false);
             }
 
-            var (m2, _) = await StunClient.BindingAsync(udp, stuns[1], 2000, ct);
-            if (m2 == null) return "STUN 部分不可用（第二服务器无响应）";
-
-            log($"[NAT] 本地出口 {localIp}｜经 {names[stuns[0]]} 映射为 {m1}｜经 {names[stuns[1]]} 映射为 {m2}");
-
-            bool isPrivate = IsPrivateOrCgn(m1.Address);
-            if (!isPrivate && localIp != null && m1.Address.Equals(localIp))
-                return "无 NAT（公网直连）";
-
-            if (m1.Equals(m2))
-                return "Full Cone / Restricted Cone（端点无关映射）";
-            return "Symmetric（对称型 NAT）";
+            // 只有一台能稳定对比 → 确认存在 NAT 但无法分类
+            return new("存在 NAT，类型未测出（可用 STUN 不足两台）", false, false);
         }
         catch (Exception ex)
         {
             log($"[NAT] 类型探测异常: {ex.Message}");
-            return "探测失败";
+            return new("探测失败", false, false);
         }
+    }
+
+    /// <summary>向同一 STUN 服务器重试若干次，抗 UDP 瞬时丢包。</summary>
+    private static async Task<IPEndPoint?> BindingWithRetry(UdpClient udp, IPEndPoint server, int attempts, CancellationToken ct)
+    {
+        for (int i = 0; i < attempts; i++)
+        {
+            if (ct.IsCancellationRequested) return null;
+            var (m, _) = await StunClient.BindingAsync(udp, server, 1500, ct);
+            if (m != null) return m;
+        }
+        return null;
     }
 
     private static bool IsPrivateOrCgn(IPAddress ip)

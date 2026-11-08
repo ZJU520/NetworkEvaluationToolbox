@@ -40,9 +40,9 @@ public class MainViewModel : INotifyPropertyChanged
     // —— 配置项（TextBox 绑定） ——
     public string DnsServers { get; set; } = "223.5.5.5, 119.29.29.29, 114.114.114.114";
     public string TestDomains { get; set; } = "www.baidu.com, www.qq.com, www.aliyun.com";
-    public string TcpTargets { get; set; } = "www.baidu.com:443, www.qq.com:443";
-    public string StunServers { get; set; } = "stun.chat.bilibili.com:3478, stun.l.google.com:19302, stun.miwifi.com:3478, stun.qq.com:3478";
-    public string MqttBroker { get; set; } = "broker.emqx.io:1883";
+    public string TcpTargets { get; set; } = "www.baidu.com:443, www.qq.com:443, www.taobao.com:443";
+    public string StunServers { get; set; } = "stun.chat.bilibili.com:3478, stun.l.google.com:19302, stun.cloudflare.com:3478, global.stun.twilio.com:3478";
+    public string MqttBroker { get; set; } = "broker-cn.emqx.io:1883";
     public string MqttKeepAliveText { get; set; } = "10";
     public string DurationText { get; set; } = "600";
     public string ConcurrencyText { get; set; } = "8";
@@ -56,8 +56,11 @@ public class MainViewModel : INotifyPropertyChanged
     public bool EnableMqtt { get; set; } = true;
     public bool EnableSpeedTest { get; set; } = true;
     public string SpeedDurationText { get; set; } = "10";
-    public string SpeedDownloadUrl { get; set; } = "https://speed.cloudflare.com/__down?bytes=25000000";
-    public string SpeedUploadUrl { get; set; } = "https://speed.cloudflare.com/__up";
+    public string SpeedDownloadUrl { get; set; } =
+        "https://mirrors.cloud.tencent.com/ubuntu/ls-lR.gz, " +
+        "https://mirrors.huaweicloud.com/ubuntu/ls-lR.gz, " +
+        "https://mirrors.aliyun.com/ubuntu/ls-lR.gz";
+    public string SpeedUploadUrl { get; set; } = "https://mirrors.huaweicloud.com/, https://speed.cloudflare.com/__up";
 
     // —— 运行状态 ——
     private bool _isRunning;
