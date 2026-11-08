@@ -54,6 +54,10 @@ public class MainViewModel : INotifyPropertyChanged
     public bool EnableNatType { get; set; } = true;
     public bool EnableNatCapacity { get; set; } = true;
     public bool EnableMqtt { get; set; } = true;
+    public bool EnableSpeedTest { get; set; } = true;
+    public string SpeedDurationText { get; set; } = "10";
+    public string SpeedDownloadUrl { get; set; } = "https://speed.cloudflare.com/__down?bytes=25000000";
+    public string SpeedUploadUrl { get; set; } = "https://speed.cloudflare.com/__up";
 
     // —— 运行状态 ——
     private bool _isRunning;
@@ -84,6 +88,7 @@ public class MainViewModel : INotifyPropertyChanged
         new DimensionStatus { Key = "udp", Name = "UDP 连通性稳定性" },
         new DimensionStatus { Key = "nat", Name = "NAT 评估" },
         new DimensionStatus { Key = "mqtt", Name = "MQTT 长连接稳定性" },
+        new DimensionStatus { Key = "speed", Name = "带宽测速" },
     };
 
     public RelayCommand StartCmd { get; }
@@ -123,6 +128,10 @@ public class MainViewModel : INotifyPropertyChanged
             EnableMqtt = EnableMqtt,
             MqttBroker = MqttBroker.Trim(),
             MqttKeepAliveSeconds = int.TryParse(MqttKeepAliveText, out var ka) ? Math.Clamp(ka, 5, 600) : 10,
+            EnableSpeedTest = EnableSpeedTest,
+            SpeedTestDurationSeconds = int.TryParse(SpeedDurationText, out var sd) ? Math.Clamp(sd, 5, 120) : 10,
+            SpeedDownloadUrl = SpeedDownloadUrl.Trim(),
+            SpeedUploadUrl = SpeedUploadUrl.Trim(),
         };
         if (cfg.TestDomains.Count == 0) cfg.TestDomains = new TestConfig().TestDomains;
         return cfg;

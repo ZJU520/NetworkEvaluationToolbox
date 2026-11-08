@@ -66,6 +66,12 @@
 
                         <TextBlock Text="MQTT KeepAlive（秒，模拟网关心跳周期）" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Input}" Text="{Binding MqttKeepAliveText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="测速下载地址" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding SpeedDownloadUrl, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="测速上传地址" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding SpeedUploadUrl, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
                 </Border>
 
@@ -82,6 +88,9 @@
                         <TextBlock Text="NAT 容量探测上限（100 - 2000 会话）" Style="{StaticResource Label}"/>
                         <TextBox Style="{StaticResource Input}" Text="{Binding NatMaxText, UpdateSourceTrigger=PropertyChanged}"/>
 
+                        <TextBlock Text="测速时长（秒，下载/上传各这么久）" Style="{StaticResource Label}"/>
+                        <TextBox Style="{StaticResource Input}" Text="{Binding SpeedDurationText, UpdateSourceTrigger=PropertyChanged}"/>
+
                         <TextBlock Text="启用维度" Style="{StaticResource Label}"/>
                         <StackPanel>
                             <CheckBox Content="DNS 解析稳定性" IsChecked="{Binding EnableDns}" Margin="0,2"/>
@@ -90,6 +99,7 @@
                             <CheckBox Content="NAT 类型探测" IsChecked="{Binding EnableNatType}" Margin="0,2"/>
                             <CheckBox Content="NAT 会话容量测试" IsChecked="{Binding EnableNatCapacity}" Margin="0,2"/>
                             <CheckBox Content="MQTT 长连接稳定性（MQ/网关场景）" IsChecked="{Binding EnableMqtt}" Margin="0,2"/>
+                            <CheckBox Content="带宽测速（压测结束后单独运行）" IsChecked="{Binding EnableSpeedTest}" Margin="0,2"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

@@ -23,6 +23,7 @@ public partial class App : Application
                 Concurrency = 4,
                 NatMaxSessions = 250,
                 MqttKeepAliveSeconds = 8, // 冒烟测试里更快触发心跳
+                SpeedTestDurationSeconds = 5, // 冒烟里短测速
             };
             var logFile = Path.Combine(AppContext.BaseDirectory, "smoke.log");
             var log = new List<string>();

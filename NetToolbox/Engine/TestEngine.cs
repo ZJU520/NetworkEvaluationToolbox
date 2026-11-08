@@ -15,7 +15,7 @@ public class TestEngine
 
     private static readonly Dictionary<string, double> Weights = new()
     {
-        ["dns"] = 0.25, ["tcp"] = 0.30, ["udp"] = 0.20, ["nat"] = 0.25, ["mqtt"] = 0.30
+        ["dns"] = 0.25, ["tcp"] = 0.30, ["udp"] = 0.20, ["nat"] = 0.25, ["mqtt"] = 0.30, ["speed"] = 0.20
     };
 
     public TestEngine(TestConfig cfg) => _cfg = cfg;
@@ -29,8 +29,9 @@ public class TestEngine
         var natEstimate = 0.0;
         if (_cfg.EnableNatType) natEstimate += 8;
         if (_cfg.EnableNatCapacity) natEstimate += new[] { 100, 250, 500, 1000, 2000 }.Count(x => x <= _cfg.NatMaxSessions) * 5.0 + 5;
-        var phase1Weight = _cfg.EnableDns || _cfg.EnableTcp || _cfg.EnableUdp ? _cfg.DurationSeconds : 0.0;
-        var totalEstimate = Math.Max(5, phase1Weight + (natEnabled ? natEstimate : 0));
+        var phase1Weight = _cfg.EnableDns || _cfg.EnableTcp || _cfg.EnableUdp || _cfg.EnableMqtt ? _cfg.DurationSeconds : 0.0;
+        var speedEstimate = _cfg.EnableSpeedTest ? Math.Clamp(_cfg.SpeedTestDurationSeconds, 5, 120) * 2.0 + 5 : 0.0;
+        var totalEstimate = Math.Max(5, phase1Weight + (natEnabled ? natEstimate : 0) + speedEstimate);
 
         var done = false;
         var progressTask = Task.Run(async () =>
@@ -85,6 +86,24 @@ public class TestEngine
                 {
                     Log?.Invoke($"[NAT] 异常: {ex.Message}");
                     Status?.Invoke("nat", "错误");
+                }
+            }
+
+            // —— 阶段三：带宽测速（会打满链路，必须在压测结束后单独运行）——
+            if (_cfg.EnableSpeedTest && !ct.IsCancellationRequested)
+            {
+                var speed = new SpeedTester();
+                Status?.Invoke("speed", "运行中");
+                try
+                {
+                    var res = await speed.RunAsync(_cfg, s => Log?.Invoke(s), m => Metrics?.Invoke("speed", m), ct);
+                    lock (report.Dimensions) report.Dimensions.Add(res);
+                    Status?.Invoke("speed", res.Skipped ? "跳过" : "完成");
+                }
+                catch (Exception ex)
+                {
+                    Log?.Invoke($"[SPEED] 异常: {ex.Message}");
+                    Status?.Invoke("speed", "错误");
                 }
             }
         }

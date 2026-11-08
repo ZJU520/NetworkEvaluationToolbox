@@ -74,7 +74,7 @@ public static class ReportGenerator
     <div class="meta">
       测试时间：{d.StartTime:yyyy-MM-dd HH:mm:ss} ~ {d.EndTime:HH:mm:ss}（共 {(d.EndTime - d.StartTime).TotalSeconds:F0} 秒）<br>
       压测时长：{d.Config.DurationSeconds} 秒｜并发：{d.Config.Concurrency}<br>
-      综合评分 = DNS 25% + TCP 30% + UDP 20% + NAT 25% + MQTT 长连接 30%（按实际启用维度归一化）{(d.Cancelled ? "｜<b style='color:#b45309'>测试被提前中断，结果基于部分数据</b>" : "")}
+      综合评分 = DNS 25% + TCP 30% + UDP 20% + NAT 25% + MQTT 30% + 带宽 20%（按实际启用维度归一化）{(d.Cancelled ? "｜<b style='color:#b45309'>测试被提前中断，结果基于部分数据</b>" : "")}
     </div>
   </div>
 </section>
@@ -152,7 +152,7 @@ public static class ReportGenerator
 
     private static IEnumerable<DimensionResult> Order(ReportData d)
     {
-        var order = new[] { "dns", "tcp", "udp", "nat", "mqtt" };
+        var order = new[] { "dns", "tcp", "udp", "nat", "mqtt", "speed" };
         return d.Dimensions.OrderBy(x => Array.IndexOf(order, x.Key));
     }
 

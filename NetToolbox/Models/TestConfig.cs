@@ -34,4 +34,16 @@ public class TestConfig
     public int MqttKeepAliveSeconds { get; set; } = 10;
 
     public bool EnableMqtt { get; set; } = true;
+
+    // —— 带宽测速 ——
+    public bool EnableSpeedTest { get; set; } = true;
+
+    /// <summary>下载/上传各测多久（秒）</summary>
+    public int SpeedTestDurationSeconds { get; set; } = 10;
+
+    /// <summary>测速并发连接数</summary>
+    public int SpeedTestConnections { get; set; } = 6;
+
+    public string SpeedDownloadUrl { get; set; } = "https://speed.cloudflare.com/__down?bytes=25000000";
+    public string SpeedUploadUrl { get; set; } = "https://speed.cloudflare.com/__up";
 }
