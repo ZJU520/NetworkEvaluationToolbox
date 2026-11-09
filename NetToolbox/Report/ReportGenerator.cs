@@ -106,6 +106,13 @@ public static class ReportGenerator
                 }
                 foreach (var (k, v) in dim.Extras)
                     sb.Append($"<tr><th>{Escape(k)}</th><td>{Escape(v)}</td></tr>");
+                if (dim.Key == "speed")
+                    sb.Append("""
+                        <tr><th>人工复核</th><td>如需交叉验证带宽，可在浏览器打开网页版测速站对比：
+                        <a href="https://test.ustc.edu.cn" target="_blank" rel="noopener">中科大测速站</a> ·
+                        <a href="https://test.nju.edu.cn" target="_blank" rel="noopener">南大测速站</a>
+                        （两站仅限浏览器使用，与本工具结果互相印证）</td></tr>
+                        """);
                 sb.Append("</table>");
             }
             sb.Append("</div>");
